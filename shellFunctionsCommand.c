@@ -1,6 +1,6 @@
 #include "shellFunctions.h"
 
-char *built_in = {
+char *built_in[] = {
     "cd",
     "help",
     "exit"

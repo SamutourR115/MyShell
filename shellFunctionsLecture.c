@@ -8,6 +8,7 @@ void lsh_loop(){
 
     do{
         printf(">");
+        fflush(stdout);
         lines = lsh_read_line();
         args = lsh_split_line(lines);
         status = lsh_execute(args);
@@ -34,13 +35,15 @@ char *lsh_read_line(void){
     c = getchar();
 
     // If we hit EOF, replace it with a null character and return.
-    if (c == EOF || c == '\n') {
-      buffer[position] = '\0';
-      return buffer;
-    } else {
-      buffer[position] = c;
+    if (c == EOF){
+      free(buffer);
+      printf("\n");
+      exit(EXIT_SUCCESS);
     }
-    position++;
+    if(c == '\n'){
+      buffer[position] == '/0';
+      return buffer;
+    }
 
     // If we have exceeded the buffer, reallocate.
     if (position >= buffSize) {
@@ -67,10 +70,10 @@ char **lsh_split_line(char *line){
     token = strtok(line,LSH_TOK_DELIM);
 
     while(token != NULL){
-        token[positions] = token;
+        tokens[positions] = token;
         positions ++;
 
-        if(positions >= token){
+        if(positions >= buffSize){
             buffSize += LSH_TOK_BUFSIZE;
             tokens = realloc(tokens,buffSize * sizeof(char*));
 
