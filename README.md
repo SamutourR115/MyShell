@@ -4,7 +4,7 @@
 
 I built this project to strengthen my low-level programming skills. My ultimate goal is to master Edge AI, Robotics, Embedded Systems, and Cloud/Network computing—fields that all require a deep, foundational understanding of how software interacts directly with the operating system and hardware. This is my first project from a list i make before. 
 
-## What i code : 
+## What i code
 Started from Stephen Brennan's "Write a Shell in C" tutorial. My additions:
  - 
 
