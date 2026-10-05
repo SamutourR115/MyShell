@@ -31,10 +31,8 @@ char *lsh_read_line(void){
   }
 
   while (1) {
-    // Read a character
     c = getchar();
 
-    // If we hit EOF, replace it with a null character and return.
     if (c == EOF){
       free(buffer);
       printf("\n");
@@ -45,7 +43,6 @@ char *lsh_read_line(void){
       return buffer;
     }
 
-    // If we have exceeded the buffer, reallocate.
     if (position >= buffSize) {
       buffSize += LSH_BUFFER;
       buffer = realloc(buffer, buffSize);

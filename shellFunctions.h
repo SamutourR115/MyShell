@@ -28,29 +28,32 @@ int lsh_exit(char **args);
 int lsh_num_builtins();
 
 /*
- * Commandes intégrées actuellement disponibles :
+ * TODO list (in order — each step builds on the previous one)
  *
- *   - cd     : changer de répertoire avec chdir().
- *   - help   : afficher l'aide de la mini-shell.
- *   - exit   : quitter la mini-shell.
+ * TODO: Rewrite the tokenizer
+ *       - recognize operators (|, <, >, >>, &) even without spaces
+ *       - handle quotes ("hello world" = one argument)
  *
- * Les autres commandes, comme ls, pwd ou echo, sont des programmes
- * externes recherchés grâce à la variable d'environnement PATH.
+ * TODO: Redirections (<, >, >>)
+ *       - open() the file, then dup2() in the child before execvp()
  *
- * Ce projet permet d'étudier plusieurs concepts de programmation bas niveau :
+ * TODO: Pipes (|)
+ *       - pipe() + one fork() per command + dup2()
+ *       - support chains: cmd1 | cmd2 | cmd3
  *
- *   - processus et appels système ;
- *   - fork(), execvp() et waitpid() ;
- *   - pointeurs et tableaux de chaînes de caractères ;
- *   - gestion de la mémoire dynamique ;
- *   - entrées et sorties standard ;
- *   - gestion des erreurs en C.
+ * TODO: Signal handling
+ *       - Ctrl+C (SIGINT) kills the running command, not the shell
  *
- * Fonctionnalités qui pourront être ajoutées ultérieurement :
+ * TODO: Background execution (&)
+ *       - don't wait for the child
+ *       - handle SIGCHLD to reap zombie processes
  *
- *   - redirections avec >, < et >> ;
- *   - pipes avec | ;
- *   - exécution en arrière-plan avec & ;
- *   - gestion des signaux comme SIGINT et SIGCHLD ;
- *   - prise en charge des guillemets et des wildcards.
+ * TODO: Wildcards (*, ?)
+ *       - expand with glob()
+ *
+ * Small improvements (anytime):
+ * TODO: cd with no argument goes to $HOME
+ * TODO: Exit status of the last command ($?)
+ * TODO: Environment variables ($HOME, export)
+ * TODO: Command history (readline)
  */

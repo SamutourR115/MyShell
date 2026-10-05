@@ -11,5 +11,5 @@ Started from Stephen Brennan's "Write a Shell in C" tutorial. My additions:
 
 ## Source
 I used many source to build this project. Here they are :
-https://github.com/codecrafters-io/build-your-own-x
-https://brennan.io/2015/01/16/write-a-shell-in-c/
+ - https://github.com/codecrafters-io/build-your-own-x
+ - https://brennan.io/2015/01/16/write-a-shell-in-c/
