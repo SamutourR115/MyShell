@@ -1,7 +1,7 @@
 #include "shellFunctions.h"
 
 //Definition of functions
-void lsh_loop(){
+void lsh_loop(void){
     char *lines;
     char **args;
     int status;
@@ -39,7 +39,7 @@ char *lsh_read_line(void){
       exit(EXIT_SUCCESS);
     }
     if(c == '\n'){
-      buffer[position] == '/0';
+      buffer[position] = '\0';
       return buffer;
     }
 
@@ -48,9 +48,13 @@ char *lsh_read_line(void){
       buffer = realloc(buffer, buffSize);
       if (!buffer) {
         fprintf(stderr, "lsh: allocation error\n");
+        free(buffer);
         exit(EXIT_FAILURE);
       }
     }
+
+    buffer[position] = c;
+    position++;
   }
 }
 
@@ -77,6 +81,7 @@ char **lsh_split_line(char *line){
             if(!tokens){
                 fprintf(stderr,"lsh: Allocation error \n");
                 exit(EXIT_FAILURE);
+                free(tokens);
             }
         }
 

@@ -8,8 +8,14 @@ I built this project to strengthen my low-level programming skills. My ultimate 
 
 Started from Stephen Brennan's "Write a Shell in C" tutorial. My additions:
  - Fixed EOF handling (Ctrl+D now exits cleanly)
+ - Rewrite the tokenizer (recognize operators (|, <, >, >>, &) even without spaces)
+ - Rewrite the tokenizer (handle quotes ("hello world" = one argument))
 
 ## Source
 I used many source to build this project. Here they are :
  - https://github.com/codecrafters-io/build-your-own-x
  - https://brennan.io/2015/01/16/write-a-shell-in-c/
+
+## AI use
+I didn't use ai to code for this project, only to know what can i increase on a custom shell make by a student. 
+

@@ -1,3 +1,6 @@
+#ifndef __SHELLFUNCTIONS__
+#define __SHELLFUNCTIONS__
+
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -9,7 +12,7 @@
 #define LSH_TOK_DELIM " \t\r\n\a"
 //Declaration of functions
 
-void lsh_loop();
+void lsh_loop(void);
 
 char *lsh_read_line(void);
 
@@ -57,3 +60,5 @@ int lsh_num_builtins();
  * TODO: Environment variables ($HOME, export)
  * TODO: Command history (readline)
  */
+
+#endif
