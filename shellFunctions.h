@@ -6,29 +6,90 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <assert.h>
 
-#define LSH_BUFFER 1024
-#define LSH_TOK_BUFSIZE 64
-#define LSH_TOK_DELIM " \t\r\n\a"
-//Declaration of functions
+#define LSH_BUFFER 1024          /* Initial (and growth) size of the input buffer */
+#define LSH_TOK_BUFSIZE 64       /* Initial (and growth) size of the token array */
+#define LSH_TOK_DELIM " \t\r\n\a" /* Characters that separate tokens */
 
+/* ------------------------------------------------------------------------- */
+/*  Main loop and input parsing                                              */
+/* ------------------------------------------------------------------------- */
+
+/**
+ * @brief Main shell loop: prompt, read, parse and execute commands
+ *        until a command asks the shell to stop.
+ */
 void lsh_loop(void);
 
+/**
+ * @brief Read one line from standard input.
+ *
+ * The buffer grows dynamically as needed. Exits the shell on EOF (Ctrl+D).
+ *
+ * @return A heap-allocated, null-terminated string (without the trailing
+ *         newline). The caller must free() it.
+ */
 char *lsh_read_line(void);
 
+/**
+ * @brief Split a line into tokens separated by LSH_TOK_DELIM.
+ *
+ * Note: the line is modified in place (strtok), and the tokens point into it.
+ *
+ * @param line The line read from the user.
+ * @return A heap-allocated, NULL-terminated array of tokens.
+ *         The caller must free() the array (not the tokens).
+ */
 char **lsh_split_line(char *line);
 
+/* ------------------------------------------------------------------------- */
+/*  Command execution                                                        */
+/* ------------------------------------------------------------------------- */
+
+/**
+ * @brief Run an external program in a child process and wait for it.
+ *
+ * @param args NULL-terminated argument list (args[0] is the program name).
+ * @return 1 so the shell keeps running.
+ */
 int lsh_launch(char **args);
 
-int lsh_cd(char **args);
-
-int lsh_help(char **args);
-
+/**
+ * @brief Dispatch a command: run it as a builtin if it is one,
+ *        otherwise launch it as an external program.
+ *
+ * @param args NULL-terminated argument list.
+ * @return 1 to keep the shell running, 0 to exit.
+ */
 int lsh_execute(char **args);
 
+/* ------------------------------------------------------------------------- */
+/*  Builtin commands                                                         */
+/* ------------------------------------------------------------------------- */
+
+/**
+ * @brief Builtin: change the current directory to args[1].
+ * @return 1 so the shell keeps running.
+ */
+int lsh_cd(char **args);
+
+/**
+ * @brief Builtin: print the help message and the list of builtins.
+ * @return 1 so the shell keeps running.
+ */
+int lsh_help(char **args);
+
+/**
+ * @brief Builtin: exit the shell.
+ * @return 0 to stop the main loop.
+ */
 int lsh_exit(char **args);
 
-int lsh_num_builtins();
+/**
+ * @brief Number of builtin commands.
+ */
+int lsh_num_builtins(void);
 
 /*
  * TODO list (in order — each step builds on the previous one)

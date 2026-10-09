@@ -59,6 +59,8 @@ char *lsh_read_line(void){
 }
 
 char **lsh_split_line(char *line){
+    assert(line != NULL);
+
     int buffSize = LSH_TOK_BUFSIZE, positions = 0;
     char **tokens = malloc(buffSize * sizeof(char*));
     char *token; 
