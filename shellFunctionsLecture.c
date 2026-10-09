@@ -2,20 +2,20 @@
 
 //Definition of functions
 void lsh_loop(void){
-    char *lines;
-    char **args;
-    int status;
+  char *lines;
+  char **args;
+  int status;
 
-    do{
-        printf(">");
-        fflush(stdout);
-        lines = lsh_read_line();
-        args = lsh_split_line(lines);
-        status = lsh_execute(args);
+  do{
+    printf(">");
+    fflush(stdout);
+    lines = lsh_read_line();
+    args = lsh_split_line(lines);
+    status = lsh_execute(args);
 
-        free(lines);
-        free(args);
-    }while(status);
+    free(lines);
+    free(args);
+  }while(status);
 
 }
 
@@ -59,41 +59,43 @@ char *lsh_read_line(void){
 }
 
 char **lsh_split_line(char *line){
-    assert(line != NULL);
+  assert(line != NULL);
 
-    int buffSize = LSH_TOK_BUFSIZE, positions = 0;
-    char **tokens = malloc(buffSize * sizeof(char*));
-    char *token; 
+  int buffSize = LSH_TOK_BUFSIZE, positions = 0;
+  char **tokens = malloc(buffSize * sizeof(char*));
+  char *token; 
 
-    if(!tokens){
+  if(!tokens){
+    fprintf(stderr,"lsh: Allocation error \n");
+    exit(EXIT_FAILURE);
+  }
+
+  token = strtok(line,LSH_TOK_DELIM);
+
+  while(token != NULL){
+    tokens[positions] = token;
+    positions ++;
+
+    if(positions >= buffSize){
+      buffSize += LSH_TOK_BUFSIZE;
+      tokens = realloc(tokens,buffSize * sizeof(char*));
+
+      if(!tokens){
         fprintf(stderr,"lsh: Allocation error \n");
         exit(EXIT_FAILURE);
-    }
-
-    token = strtok(line,LSH_TOK_DELIM);
-
-    while(token != NULL){
-        tokens[positions] = token;
-        positions ++;
-
-        if(positions >= buffSize){
-            buffSize += LSH_TOK_BUFSIZE;
-            tokens = realloc(tokens,buffSize * sizeof(char*));
-
-            if(!tokens){
-                fprintf(stderr,"lsh: Allocation error \n");
-                exit(EXIT_FAILURE);
-                free(tokens);
-            }
+        free(tokens);
         }
-
-        token = strtok(NULL,LSH_TOK_DELIM);
     }
-    tokens[positions] = NULL;
-    return tokens;
+
+    token = strtok(NULL,LSH_TOK_DELIM);
+    }
+  tokens[positions] = NULL;
+  return tokens;
 }
 
 int lsh_launch(char **args){
+  assert(args != NULL);
+
   pid_t pid,wpid;
   int status;
 
