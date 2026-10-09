@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -Wall -Wextra -g
 TARGET = shell
 OBJS = shell.o shellFunctionsLecture.o shellFunctionsCommand.o
-HEADERS = shell.h shellFunctionsLecture.h shellFunctionsCommand.h
+HEADERS = shellFunctions.h
 
 all: $(TARGET)
 

@@ -23,6 +23,7 @@ char *lsh_read_line(void){
   int buffSize = LSH_BUFFER;
   int position = 0;
   char *buffer = malloc(sizeof(char) * buffSize);
+  char *tmp;
   int c;
 
   if (!buffer) {
@@ -33,24 +34,20 @@ char *lsh_read_line(void){
   while (1) {
     c = getchar();
 
-    if (c == EOF){
-      free(buffer);
-      printf("\n");
-      exit(EXIT_SUCCESS);
+   if (position >= buffSize) {
+      buffSize += LSH_BUFFER;
+      tmp = realloc(buffer, buffSize);   
+      if (!tmp) {
+        fprintf(stderr, "lsh: allocation error\n");
+        free(buffer);                    
+        exit(EXIT_FAILURE);
+      }
+      buffer = tmp;
     }
+
     if(c == '\n'){
       buffer[position] = '\0';
       return buffer;
-    }
-
-    if (position >= buffSize) {
-      buffSize += LSH_BUFFER;
-      buffer = realloc(buffer, buffSize);
-      if (!buffer) {
-        fprintf(stderr, "lsh: allocation error\n");
-        free(buffer);
-        exit(EXIT_FAILURE);
-      }
     }
 
     buffer[position] = c;
@@ -60,45 +57,47 @@ char *lsh_read_line(void){
 
 char **lsh_split_line(char *line){
   assert(line != NULL);
-
+ 
   int buffSize = LSH_TOK_BUFSIZE, positions = 0;
   char **tokens = malloc(buffSize * sizeof(char*));
-  char *token; 
-
+  char **tmp;
+  char *token;
+ 
   if(!tokens){
     fprintf(stderr,"lsh: Allocation error \n");
     exit(EXIT_FAILURE);
   }
-
+ 
   token = strtok(line,LSH_TOK_DELIM);
-
+ 
   while(token != NULL){
     tokens[positions] = token;
     positions ++;
-
+ 
     if(positions >= buffSize){
       buffSize += LSH_TOK_BUFSIZE;
-      tokens = realloc(tokens,buffSize * sizeof(char*));
-
-      if(!tokens){
+      tmp = realloc(tokens,buffSize * sizeof(char*));
+ 
+      if(!tmp){
         fprintf(stderr,"lsh: Allocation error \n");
+        free(tokens);                  
         exit(EXIT_FAILURE);
-        free(tokens);
-        }
+      }
+      tokens = tmp;
     }
-
+ 
     token = strtok(NULL,LSH_TOK_DELIM);
-    }
+  }
   tokens[positions] = NULL;
   return tokens;
 }
 
 int lsh_launch(char **args){
   assert(args != NULL);
-
-  pid_t pid,wpid;
+ 
+  pid_t pid;           
   int status;
-
+ 
   pid = fork();
   if(pid == 0){
     if(execvp(args[0],args) == -1){
@@ -111,9 +110,13 @@ int lsh_launch(char **args){
   }
   else{
     do{
-      wpid = waitpid(pid, &status, WUNTRACED);
+
+      if(waitpid(pid, &status, WUNTRACED) == -1){
+        perror("lsh");
+        break;
+      }
     }while(!WIFEXITED(status) && !WIFSIGNALED(status));
   }
-
+ 
   return 1;
 }

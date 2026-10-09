@@ -1,5 +1,5 @@
-#ifndef __SHELLFUNCTIONS__
-#define __SHELLFUNCTIONS__
+#ifndef SHELLFUNCTIONS_H
+#define SHELLFUNCTIONS_H
 
 #include <stdio.h>
 #include <unistd.h>
