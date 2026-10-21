@@ -103,10 +103,6 @@ int lsh_num_builtins(void);
 /*
  * TODO list (in order — each step builds on the previous one)
  *
- * TODO: Rewrite the tokenizer
- *       - recognize operators (|, <, >, >>, &) even without spaces
- *       - handle quotes ("hello world" = one argument)
- *
  * TODO: Redirections (<, >, >>)
  *       - open() the file, then dup2() in the child before execvp()
  *
