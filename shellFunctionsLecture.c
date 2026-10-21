@@ -14,6 +14,7 @@ void lsh_loop(void){
     status = lsh_execute(args);
 
     free(lines);
+    free(args[0]);
     free(args);
   }while(status);
 
@@ -61,19 +62,45 @@ char **lsh_split_line(char *line){
   int buffSize = LSH_TOK_BUFSIZE, positions = 0;
   char **tokens = malloc(buffSize * sizeof(char*));
   char **tmp;
-  char *token;
- 
-  if(!tokens){
+  
+  char *buf = malloc(strlen(line) * 2 + 1);
+  char *p = line, *out = buf;
+  int inQuote;
+
+  if(!tokens || !buf){
     fprintf(stderr,"lsh: Allocation error \n");
     exit(EXIT_FAILURE);
   }
- 
-  token = strtok(line,LSH_TOK_DELIM);
- 
-  while(token != NULL){
-    tokens[positions] = token;
+
+  while(1){
+    while(*p != '\0' && strchr(LSH_TOK_DELIM, *p)) p++;
+    if(*p == '\0') break;
+
+    tokens[positions] = out;
     positions ++;
- 
+
+    if(is_operator(*p)){
+      if(p[0] == '>' && p[1] == '>') *out++ = *p++;
+      *out++ = *p++;
+    }
+    else{
+      inQuote = 0;
+      while(*p != '\0'){
+        if(*p == '"'){
+          inQuote = !inQuote;
+          p++;
+        }
+        else if(!inQuote && (strchr(LSH_TOK_DELIM, *p) || is_operator(*p))) break;
+        else *out++ = *p++;
+      }
+      if(inQuote){
+        fprintf(stderr,"lsh: unclosed quote\n");
+        positions = 0;
+        break;
+      }
+    }
+    *out++ = '\0';
+
     if(positions >= buffSize){
       buffSize += LSH_TOK_BUFSIZE;
       tmp = realloc(tokens,buffSize * sizeof(char*));
@@ -85,11 +112,14 @@ char **lsh_split_line(char *line){
       }
       tokens = tmp;
     }
- 
-    token = strtok(NULL,LSH_TOK_DELIM);
   }
   tokens[positions] = NULL;
+  if(positions == 0) free(buf);
   return tokens;
+}
+
+int is_operator(char c){
+  return c == '|' || c == '<' || c == '>' || c == '&';
 }
 
 int lsh_launch(char **args){

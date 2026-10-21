@@ -7,6 +7,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <assert.h>
+#include <ctype.h>
 
 #define LSH_BUFFER 1024          /* Initial (and growth) size of the input buffer */
 #define LSH_TOK_BUFSIZE 64       /* Initial (and growth) size of the token array */
@@ -35,13 +36,21 @@ char *lsh_read_line(void);
 /**
  * @brief Split a line into tokens separated by LSH_TOK_DELIM.
  *
- * Note: the line is modified in place (strtok), and the tokens point into it.
+ * Operators (|, <, >, >>, &) are separate tokens even without spaces.
+ * Text between double quotes is kept as one token (quotes removed).
+ * On an unclosed quote, an error is printed and no token is returned.
+ * The line is not modified: tokens are copied into one buffer.
  *
  * @param line The line read from the user.
  * @return A heap-allocated, NULL-terminated array of tokens.
- *         The caller must free() the array (not the tokens).
+ *         The caller must free(tokens[0]) (the shared buffer), then free(tokens).
  */
 char **lsh_split_line(char *line);
+
+/**
+ * @brief Tell whether a character is a shell operator (|, <, >, &).
+ */
+int is_operator(char c);
 
 /* ------------------------------------------------------------------------- */
 /*  Command execution                                                        */
