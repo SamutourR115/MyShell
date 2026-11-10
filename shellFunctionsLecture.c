@@ -1,14 +1,27 @@
 #include "shellFunctions.h"
 
-//Definition of functions
+static void reap_children(int sig){
+  int saved_errno = errno;
+  (void)sig;
+
+  while (waitpid(-1, NULL, WNOHANG) > 0);
+  errno = saved_errno;
+}
+
 void lsh_loop(void){
   char *lines;
   char **args;
   int status;
+  struct sigaction sa;
+
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = reap_children;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
+  sigaction(SIGCHLD, &sa, NULL);
+  signal(SIGINT, SIG_IGN);
 
   do{
-    printf(">");
-    fflush(stdout);
     lines = lsh_read_line();
     args = lsh_split_line(lines);
     status = lsh_execute(args);
@@ -21,39 +34,14 @@ void lsh_loop(void){
 }
 
 char *lsh_read_line(void){
-  int buffSize = LSH_BUFFER;
-  int position = 0;
-  char *buffer = malloc(sizeof(char) * buffSize);
-  char *tmp;
-  int c;
+  char *line = readline(">");
 
-  if (!buffer) {
-    fprintf(stderr, "lsh: allocation error\n");
-    exit(EXIT_FAILURE);
+  if (line == NULL){
+    printf("\n");
+    exit(EXIT_SUCCESS);
   }
-
-  while (1) {
-    c = getchar();
-
-   if (position >= buffSize) {
-      buffSize += LSH_BUFFER;
-      tmp = realloc(buffer, buffSize);   
-      if (!tmp) {
-        fprintf(stderr, "lsh: allocation error\n");
-        free(buffer);                    
-        exit(EXIT_FAILURE);
-      }
-      buffer = tmp;
-    }
-
-    if(c == '\n'){
-      buffer[position] = '\0';
-      return buffer;
-    }
-
-    buffer[position] = c;
-    position++;
-  }
+  if (*line != '\0') add_history(line);
+  return line;
 }
 
 char **lsh_split_line(char *line){
@@ -122,31 +110,124 @@ int is_operator(char c){
   return c == '|' || c == '<' || c == '>' || c == '&';
 }
 
-int lsh_launch(char **args){
+int is_redirect(const char *tok){
+  return strcmp(tok, "<") == 0 || strcmp(tok, ">") == 0 || strcmp(tok, ">>") == 0;
+}
+
+static void lsh_run_child(char **cmd, int in, int out){
+  int i, n = 0, fd, flags, target;
+
+  if (in != STDIN_FILENO){ dup2(in, STDIN_FILENO); close(in); }
+  if (out != STDOUT_FILENO){ dup2(out, STDOUT_FILENO); close(out); }
+
+  for (i = 0; cmd[i] != NULL; i++){
+    if (!is_redirect(cmd[i])){
+      cmd[n++] = cmd[i];
+      continue;
+    }
+    if (cmd[i][0] == '<'){
+      flags = O_RDONLY;
+      target = STDIN_FILENO;
+    }
+    else{
+      flags = O_WRONLY | O_CREAT | (cmd[i][1] == '>' ? O_APPEND : O_TRUNC);
+      target = STDOUT_FILENO;
+    }
+    i++;
+    fd = open(cmd[i], flags, 0644);
+    if (fd == -1){
+      perror(cmd[i]);
+      exit(EXIT_FAILURE);
+    }
+    dup2(fd, target);
+    close(fd);
+  }
+  cmd[n] = NULL;
+
+  if (lsh_run_builtin(cmd) != -1) exit(EXIT_SUCCESS);
+  execvp(cmd[0], cmd);
+  perror("lsh");
+  exit(127);
+}
+
+int lsh_launch(char **args, int background){
   assert(args != NULL);
  
-  pid_t pid;           
-  int status;
- 
-  pid = fork();
-  if(pid == 0){
-    if(execvp(args[0],args) == -1){
-      perror("lsh");
-    }
+  int i, k = 0, ncmds = 1, last, status, in = STDIN_FILENO, fd[2];
+  pid_t pid, *pids;
+  char **cmd = args;
+  sigset_t chld, old;
+
+  for (i = 0; args[i] != NULL; i++){
+    if (strcmp(args[i], "|") == 0) ncmds++;
+  }
+  pids = malloc(ncmds * sizeof(pid_t));
+  if (!pids){
+    fprintf(stderr, "lsh: allocation error\n");
     exit(EXIT_FAILURE);
   }
-  else if(pid < 0){
-    perror("lsh");
-  }
-  else{
-    do{
 
-      if(waitpid(pid, &status, WUNTRACED) == -1){
+  sigemptyset(&chld);
+  sigaddset(&chld, SIGCHLD);
+  sigprocmask(SIG_BLOCK, &chld, &old);
+  fflush(stdout);
+
+  for (i = 0; ; i++){
+    if (args[i] != NULL && strcmp(args[i], "|") != 0) continue;
+
+    last = args[i] == NULL;
+    fd[0] = -1;
+    fd[1] = STDOUT_FILENO;
+    if (!last){
+      args[i] = NULL;
+      if (pipe(fd) == -1){
         perror("lsh");
         break;
       }
-    }while(!WIFEXITED(status) && !WIFSIGNALED(status));
+    }
+
+    pid = fork();
+    if (pid == 0){
+      sigprocmask(SIG_SETMASK, &old, NULL);
+      if (!background) signal(SIGINT, SIG_DFL);
+      if (fd[0] != -1) close(fd[0]);
+      lsh_run_child(cmd, in, fd[1]);
+    }
+    if (pid < 0) perror("lsh");
+    else pids[k++] = pid;
+
+    if (in != STDIN_FILENO) close(in);
+    in = STDIN_FILENO;
+    if (last) break;
+    close(fd[1]);
+    if (pid < 0){
+      close(fd[0]);
+      break;
+    }
+    in = fd[0];
+    cmd = &args[i + 1];
   }
- 
+  if (in != STDIN_FILENO) close(in);
+
+  if (background){
+    if (k > 0) printf("[%d]\n", (int)pids[k - 1]);
+    lsh_last_status = 0;
+  }
+  else{
+    for (i = 0; i < k; i++){
+      if (waitpid(pids[i], &status, 0) == -1){
+        perror("lsh");
+        continue;
+      }
+      if (WIFEXITED(status)) lsh_last_status = WEXITSTATUS(status);
+      else if (WIFSIGNALED(status)){
+        lsh_last_status = 128 + WTERMSIG(status);
+        if (WTERMSIG(status) == SIGINT && i == k - 1) printf("\n");
+      }
+    }
+  }
+
+  sigprocmask(SIG_SETMASK, &old, NULL);
+  free(pids);
   return 1;
 }

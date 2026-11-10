@@ -8,10 +8,18 @@
 #include <sys/wait.h>
 #include <assert.h>
 #include <ctype.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <glob.h>
+#include <signal.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
-#define LSH_BUFFER 1024          /* Initial (and growth) size of the input buffer */
 #define LSH_TOK_BUFSIZE 64       /* Initial (and growth) size of the token array */
 #define LSH_TOK_DELIM " \t\r\n\a" /* Characters that separate tokens */
+
+/** Exit status of the last command, used for $? */
+extern int lsh_last_status;
 
 /* ------------------------------------------------------------------------- */
 /*  Main loop and input parsing                                              */
@@ -20,13 +28,16 @@
 /**
  * @brief Main shell loop: prompt, read, parse and execute commands
  *        until a command asks the shell to stop.
+ *
+ * The shell ignores SIGINT (Ctrl+C only kills the running command)
+ * and reaps finished background children on SIGCHLD.
  */
 void lsh_loop(void);
 
 /**
- * @brief Read one line from standard input.
+ * @brief Read one line with readline (line editing + history).
  *
- * The buffer grows dynamically as needed. Exits the shell on EOF (Ctrl+D).
+ * Non-empty lines are added to the history. Exits the shell on EOF (Ctrl+D).
  *
  * @return A heap-allocated, null-terminated string (without the trailing
  *         newline). The caller must free() it.
@@ -52,36 +63,59 @@ char **lsh_split_line(char *line);
  */
 int is_operator(char c);
 
+/**
+ * @brief Tell whether a token is a redirection (<, >, >>).
+ */
+int is_redirect(const char *tok);
+
 /* ------------------------------------------------------------------------- */
 /*  Command execution                                                        */
 /* ------------------------------------------------------------------------- */
 
 /**
- * @brief Run an external program in a child process and wait for it.
+ * @brief Run a pipeline (cmd1 | cmd2 | ...) with one child per command.
  *
- * @param args NULL-terminated argument list (args[0] is the program name).
+ * Each child applies its own redirections (<, >, >>) before execvp().
+ * Updates lsh_last_status with the status of the last command.
+ *
+ * @param args NULL-terminated, already expanded tokens, "|" between commands.
+ *             Modified: each "|" is replaced by NULL.
+ * @param background If non-zero, don't wait for the children (cmd &).
  * @return 1 so the shell keeps running.
  */
-int lsh_launch(char **args);
+int lsh_launch(char **args, int background);
 
 /**
- * @brief Dispatch a command: run it as a builtin if it is one,
- *        otherwise launch it as an external program.
+ * @brief Expand $VAR, $? and wildcards (*, ?), check the syntax, then run
+ *        the command: a lone builtin runs in the shell itself, anything else
+ *        (pipes, redirections, &) goes through lsh_launch().
  *
- * @param args NULL-terminated argument list.
+ * @param args NULL-terminated token list from lsh_split_line().
  * @return 1 to keep the shell running, 0 to exit.
  */
 int lsh_execute(char **args);
+
+/**
+ * @brief Run args as a builtin if args[0] names one.
+ * @return The builtin's result, or -1 if args[0] is not a builtin.
+ */
+int lsh_run_builtin(char **args);
 
 /* ------------------------------------------------------------------------- */
 /*  Builtin commands                                                         */
 /* ------------------------------------------------------------------------- */
 
 /**
- * @brief Builtin: change the current directory to args[1].
+ * @brief Builtin: change the current directory to args[1] ($HOME if absent).
  * @return 1 so the shell keeps running.
  */
 int lsh_cd(char **args);
+
+/**
+ * @brief Builtin: set environment variables (export NAME=value ...).
+ * @return 1 so the shell keeps running.
+ */
+int lsh_export(char **args);
 
 /**
  * @brief Builtin: print the help message and the list of builtins.
@@ -100,31 +134,5 @@ int lsh_exit(char **args);
  */
 int lsh_num_builtins(void);
 
-/*
- * TODO list (in order — each step builds on the previous one)
- *
- * TODO: Redirections (<, >, >>)
- *       - open() the file, then dup2() in the child before execvp()
- *
- * TODO: Pipes (|)
- *       - pipe() + one fork() per command + dup2()
- *       - support chains: cmd1 | cmd2 | cmd3
- *
- * TODO: Signal handling
- *       - Ctrl+C (SIGINT) kills the running command, not the shell
- *
- * TODO: Background execution (&)
- *       - don't wait for the child
- *       - handle SIGCHLD to reap zombie processes
- *
- * TODO: Wildcards (*, ?)
- *       - expand with glob()
- *
- * Small improvements (anytime):
- * TODO: cd with no argument goes to $HOME
- * TODO: Exit status of the last command ($?)
- * TODO: Environment variables ($HOME, export)
- * TODO: Command history (readline)
- */
 
 #endif
